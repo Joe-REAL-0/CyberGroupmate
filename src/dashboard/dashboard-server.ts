@@ -59,7 +59,7 @@ export class DashboardServer {
         // Static files (SPA)
         this.app.use(express.static(join(__dirname, "public")));
         this.app.get("/", (_req, res) => {
-            res.sendFile(join(__dirname, "ui", "index.html"));
+            res.sendFile(join(__dirname, "public", "index.html"));
         });
 
         // WebSocket upgrade with token auth
