@@ -427,7 +427,7 @@ export class RecordingPipeline extends EventEmitter {
             { role: "user", content: prompt },
         ];
 
-        const response = await callLLMWithFallback(llmMessages, resolveComponentProfiles("recording_cluster"), { caller: "recording-cluster", timeoutMs: resolveComponentTimeout("recording_cluster") });
+        const response = await callLLMWithFallback(llmMessages, resolveComponentProfiles("recording_cluster"), { caller: "recording-cluster", timeoutMs: resolveComponentTimeout("recording_cluster"), prefill: "{" });
 
         try {
             // 提取 JSON（处理可能的 markdown 包裹）
@@ -497,7 +497,7 @@ export class RecordingPipeline extends EventEmitter {
             { role: "user", content: userMessage },
         ];
 
-        const response = await callLLMWithFallback(llmMessages, resolveComponentProfiles("recording_triage"), { caller: "recording-triage", timeoutMs: resolveComponentTimeout("recording_triage") });
+        const response = await callLLMWithFallback(llmMessages, resolveComponentProfiles("recording_triage"), { caller: "recording-triage", timeoutMs: resolveComponentTimeout("recording_triage"), prefill: "{" });
 
         let result: TopicSummaryTriageResult;
         try {
@@ -541,7 +541,7 @@ export class RecordingPipeline extends EventEmitter {
             ];
 
             try {
-                const retryResponse = await callLLMWithFallback(retryMessages, resolveComponentProfiles("recording_triage"), { caller: "recording-triage", timeoutMs: resolveComponentTimeout("recording_triage") });
+                const retryResponse = await callLLMWithFallback(retryMessages, resolveComponentProfiles("recording_triage"), { caller: "recording-triage", timeoutMs: resolveComponentTimeout("recording_triage"), prefill: "{" });
                 const retryJson = retryResponse.content
                     .replace(/```json\s*/g, "")
                     .replace(/```\s*/g, "")

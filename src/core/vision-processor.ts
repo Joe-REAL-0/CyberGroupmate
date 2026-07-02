@@ -886,7 +886,7 @@ async function describeSticker(
         },
     ];
 
-    const response = await callLLMWithFallback(messages, visionConfigs, { caller: "vision" });
+    const response = await callLLMWithFallback(messages, visionConfigs, { caller: "vision", prefill: "{" });
     const raw = response.content.trim();
 
     // 尝试解析 JSON（先直接解析，失败再从文本中抽取 {...} 片段救一把）

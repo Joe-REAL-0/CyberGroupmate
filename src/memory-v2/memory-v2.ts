@@ -2297,7 +2297,7 @@ export class MemoryStoreV2 implements IMemoryStoreV2 {
             { role: "user", content: intent },
         ];
 
-        const response = await callLLMWithFallback(messages, memoryConfigs, { caller: "memory", timeoutMs: resolveComponentTimeout("memory") });
+        const response = await callLLMWithFallback(messages, memoryConfigs, { caller: "memory", timeoutMs: resolveComponentTimeout("memory"), prefill: "{" });
         try {
             const parsed = JSON.parse(response.content.replace(/```json?\s*/g, "").replace(/```/g, "").trim());
             return {

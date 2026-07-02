@@ -296,6 +296,8 @@ export async function runReflection(
                 // 不在单 profile 内重试同一超大 prompt（纯浪费 timeout）；
                 // 收缩回看范围 + profile fallback 才是真正的重试策略。
                 maxRetries: 0,
+                // Prefill "{" 强制模型从 JSON 对象起始处生成，减少 markdown 围栏 / 前缀文字
+                prefill: "{",
             });
             const parsed = parseReflectionJSON(response.content);
             if (parsed) {
@@ -2121,6 +2123,7 @@ async function analyzeMergeWithLLM(
         const response = await callLLMWithFallback(messages, llmConfigs, {
             caller: "reflection",
             timeoutMs: resolveComponentTimeout("reflection"),
+            prefill: "{",
         });
 
         const parsed = JSON.parse(
@@ -2179,6 +2182,7 @@ async function analyzeCascadeMergeWithLLM(
         const response = await callLLMWithFallback(messages, llmConfigs, {
             caller: "reflection",
             timeoutMs: resolveComponentTimeout("reflection"),
+            prefill: "{",
         });
 
         const parsed = JSON.parse(
