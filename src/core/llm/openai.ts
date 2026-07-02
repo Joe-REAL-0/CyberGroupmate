@@ -83,7 +83,13 @@ export async function callOpenAI(
     }
 
     const data = (await response.json()) as {
-        choices: Array<{ message: { content: string } }>;
+        choices: Array<{
+            message: {
+                content: string | null;
+                /** 部分模型（DeepSeek-R1、QwQ 等）将思考过程放在此字段，必须与正式回复分离 */
+                reasoning_content?: string | null;
+            };
+        }>;
         usage?: {
             prompt_tokens?: number;
             completion_tokens?: number;
@@ -94,7 +100,10 @@ export async function callOpenAI(
         };
     };
 
-    const content = data.choices?.[0]?.message?.content ?? "";
+    const message = data.choices?.[0]?.message;
+    // reasoning_content 是模型内部推理，绝不混入回复内容
+    const content = message?.content ?? "";
+
     if (!content) {
         throw new Error(`LLM returned empty response (0 chars) from model ${model}`);
     }

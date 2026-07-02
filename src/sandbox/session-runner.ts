@@ -255,6 +255,26 @@ function isBashLang(lang: string): boolean {
 }
 
 /**
+ * 防御性剥离 LLM 响应中可能残留的思考过程标记。
+ *
+ * 某些模型/API 网关会在 content 中混入 `<think>...</think>`、
+ * `<thought>...</thought>`、`<reasoning>...</reasoning>` 等推理标记。
+ * 这些内容是模型内部思考，不应进入回复历史或被模型当作
+ * 自己上一轮的输出来参考，更不能泄露到聊天。
+ *
+ * 同时处理无闭合标签的情况（`<think>` 后到文本结尾）。
+ */
+export function stripThinkingTags(text: string): string {
+    return text
+        // 带闭合标签：<think>...</think>、<thought>...</thought>、<reasoning>...</reasoning>
+        .replace(/<(?:think|thinking|thought|reasoning)>\s*([\s\S]*?)<\/(?:think|thinking|thought|reasoning)>/gi, "")
+        // 无闭合标签（到文本结尾）：<think>...剩余内容
+        .replace(/<(?:think|thinking|thought|reasoning)>[\s\S]*$/gi, "")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+}
+
+/**
  * 截断 LLM 输出：只保留第一个完整代码块及其前面的自然语言，
  * 丢弃第一个代码块结束围栏之后的所有内容。
  * （如果截断前有 <end_task> 但被截断了，则补回 <end_task>）
@@ -618,6 +638,19 @@ export async function runCodeActSession(
         }
 
         let rawAssistantText = llmResponse.content;
+
+        // ─── 防御：剥离可能残留的思考过程标记 ───
+        // 某些模型/API 网关会在 content 中混入 <think>...</think> 等推理标记，
+        // 在进入任何后续处理（截断、解析、存入历史）之前先行清除。
+        const stripped = stripThinkingTags(rawAssistantText);
+        if (stripped.length < rawAssistantText.length) {
+            log.info(`Turn ${turnNum}: 剥离思考标记`, {
+                before: rawAssistantText.length,
+                after: stripped.length,
+                discarded: rawAssistantText.length - stripped.length,
+            });
+            rawAssistantText = stripped;
+        }
 
         // ─── 检测 <end_task> 显式终止标记 ───
         let hasEndTurn = rawAssistantText.includes(END_TURN_MARKER);
