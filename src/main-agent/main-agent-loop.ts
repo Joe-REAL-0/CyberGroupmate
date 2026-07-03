@@ -68,6 +68,8 @@ export class MainAgentLoop {
     private lastNonIdleActivityAt: number = Date.now();
     private lastProactiveIdleAt: number = 0;
     private timer: ReturnType<typeof setTimeout> | null = null;
+    /** 防止 wake() 触发的 tick 重入 */
+    private wakeTickInProgress = false;
 
     /** Circuit Breaker — 主 LLM 不可用时暂停 attend */
     private circuitBreakerOpenUntil: number = 0;
@@ -130,6 +132,36 @@ export class MainAgentLoop {
         this.running = true;
         log.info("start: 主循环启动", { pollInterval: this.config.pollInterval });
         this.scheduleNext();
+    }
+
+    /**
+     * 唤醒主循环：取消等待中的定时器并立即触发一次 tick。
+     *
+     * 用于消息到达后消除轮询等待延迟。如果 tick 正在执行则跳过
+     * （当前 tick 完成后的 scheduleNext 会重新开始轮询周期）。
+     * 防重入：wake 触发的 tick 执行期间再次调用 wake 不会叠加。
+     */
+    wake(): void {
+        if (!this.running) return;
+        if (this.wakeTickInProgress) return;
+        // 取消等待中的定时器
+        if (this.timer) {
+            clearTimeout(this.timer);
+            this.timer = null;
+        }
+        this.wakeTickInProgress = true;
+        this.timer = setTimeout(async () => {
+            try {
+                await this.tick();
+            } catch (err) {
+                log.error("wake tick 异常", { error: String(err) });
+            } finally {
+                this.wakeTickInProgress = false;
+                this.scheduleNext();
+            }
+        }, 0);
+        // @ts-expect-error — Node.js Timeout has unref, but TS lib may type it as number
+        if (this.timer.unref) this.timer.unref();
     }
 
     /**
@@ -660,6 +692,7 @@ export class MainAgentLoop {
             }
             this.scheduleNext();
         }, this.config.pollInterval);
+        // @ts-expect-error — Node.js Timeout has unref, but TS lib may type it as number
         if (this.timer.unref) this.timer.unref();
     }
 }

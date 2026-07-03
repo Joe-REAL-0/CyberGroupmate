@@ -613,7 +613,7 @@ export interface SubagentConfig {
 export const DEFAULT_SUBAGENT_CONFIG: SubagentConfig = {
     maxSandboxInstances: 5,
     sandboxIdleTimeout: 600_000,
-    pollInterval: 5_000,
+    pollInterval: 2_000,
     alertEngagementThreshold: 60,
     stickiness: {
         defaults: {

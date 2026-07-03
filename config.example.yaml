@@ -387,6 +387,10 @@ metrics:
 # 控制 CodeAct 交互引擎的行为参数
 # 所有字段可选，缺省使用括号内默认值
 # subagent:
+#   # 主循环轮询间隔（毫秒）。控制 Meta Agent 检查注意力队列的频率。
+#   # 同时也是 AttentionAccumulator 的消息聚合窗口时长。
+#   # 值越小响应越快但 CPU/LLM 调用频率越高。默认 2000 (2秒)。
+#   poll_interval: 2000
 #   # 是否限制 Sandbox 只能通过平台 adapter 向当前绑定的 chatId 执行写操作 (false)
 #   restrict_adapter_writes_to_bound_chat: false
 #   # 是否启用 session 内重复消息拦截；仅真正发送成功后才记录 (true)

@@ -95,7 +95,7 @@ export class AttentionAccumulator {
         private readonly globalState: GlobalState,
         config?: AttentionAccumulatorConfig,
     ) {
-        this.windowMs = config?.windowMs ?? 5_000;
+        this.windowMs = config?.windowMs ?? 2_000;
         this.maxWindowItems = config?.topN ?? 3;
     }
 

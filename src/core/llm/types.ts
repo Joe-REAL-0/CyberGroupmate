@@ -43,6 +43,30 @@ export interface LLMResponse {
     };
 }
 
+// ─── 流式输出类型 ───
+
+/** 流式 chunk：增量文本或最终的 usage 信息 */
+export type LLMStreamChunk =
+    | { type: "delta"; content: string }
+    | { type: "usage"; usage: LLMResponse["usage"] }
+    | { type: "done"; content: string };
+
+/** 流式调用的返回值：一个异步可迭代对象 */
+export type LLMStreamResult = AsyncIterable<LLMStreamChunk>;
+
+/** Provider 流式调用函数签名 */
+export type ProviderStreamFn = (
+    messages: ChatMessage[],
+    config: LLMConfig,
+    model: string,
+    temperature: number,
+    maxTokens: number,
+    thinkingLevel?: string,
+    prefill?: string,
+    stop?: string[],
+    signal?: AbortSignal,
+) => Promise<LLMStreamResult>;
+
 /** Provider 调用函数签名 */
 export type ProviderCallFn = (
     messages: ChatMessage[],

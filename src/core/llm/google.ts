@@ -8,7 +8,7 @@
 
 import { GoogleGenAI, type Content, type Part } from "@google/genai";
 import type { LLMConfig } from "../config.js";
-import type { ChatMessage, LLMResponse } from "./types.js";
+import type { ChatMessage, LLMResponse, LLMStreamResult, LLMStreamChunk } from "./types.js";
 
 // ─── SDK 实例缓存（按配置指纹复用） ───
 
@@ -160,4 +160,70 @@ export async function callGoogle(
             }
             : undefined,
     };
+}
+
+/**
+ * 调用 Google Gemini API（流式）
+ *
+ * 使用 @google/genai SDK 的 generateContentStream 方法逐块返回 token。
+ */
+export async function callGoogleStream(
+    messages: ChatMessage[],
+    config: LLMConfig,
+    model: string,
+    temperature: number,
+    maxTokens: number,
+    _thinkingLevel?: string,
+    prefill?: string,
+    stop?: string[],
+    signal?: AbortSignal,
+): Promise<LLMStreamResult> {
+    const client = getClient(config);
+
+    const { contents, systemInstruction } = convertMessages(messages);
+
+    if (prefill) {
+        contents.push({
+            role: "model",
+            parts: [{ text: prefill }],
+        });
+    }
+
+    const stream = await client.models.generateContentStream({
+        model,
+        contents,
+        config: {
+            temperature,
+            maxOutputTokens: maxTokens,
+            ...(systemInstruction ? { systemInstruction } : {}),
+            ...(stop && stop.length > 0 ? { stopSequences: stop } : {}),
+            ...(signal ? { abortSignal: signal } : {}),
+        },
+    });
+
+    let fullContent = "";
+    let usage: LLMResponse["usage"] | undefined;
+
+    async function* streamGenerator(): AsyncGenerator<LLMStreamChunk> {
+        for await (const chunk of stream) {
+            const text = chunk.text ?? "";
+            if (text) {
+                fullContent += text;
+                yield { type: "delta", content: text };
+            }
+            // SDK 在最后一个 chunk 中携带 usageMetadata
+            if (chunk.usageMetadata) {
+                usage = {
+                    promptTokens: chunk.usageMetadata.promptTokenCount,
+                    completionTokens: chunk.usageMetadata.candidatesTokenCount,
+                    totalTokens: chunk.usageMetadata.totalTokenCount,
+                    cachedTokens: chunk.usageMetadata.cachedContentTokenCount,
+                };
+            }
+        }
+        yield { type: "usage", usage };
+        yield { type: "done", content: fullContent };
+    }
+
+    return streamGenerator();
 }

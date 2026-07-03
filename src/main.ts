@@ -488,6 +488,8 @@ async function main(): Promise<void> {
     // 注意: message_log 落盘由 RecordingPipeline Step 4 负责，不再需要独立的 MessageLogWriter hook
     let accumulator: AttentionAccumulator;
     let postTaskWindows: PostTaskWindowManager | null = null;
+    // mainLoop 提前声明，使 nc.onPush 回调能在消息到达时调用 wake()
+    let mainLoop: MainAgentLoop | null = null;
     const subagentManager = new SubagentManager({
         observerConfig: {
             engagementWindowMs: 5 * 60 * 1000,
@@ -579,7 +581,7 @@ async function main(): Promise<void> {
         list: (options) => memory.listSessionDigests({ limit: options?.limit ?? 30 }),
     });
     accumulator = new AttentionAccumulator(globalState, {
-        windowMs: appConfig.subagent?.pollInterval ?? 5000,
+        windowMs: appConfig.subagent?.pollInterval ?? 2000,
     });
     accumulator.restoreSignalPool();
     postTaskWindows = new PostTaskWindowManager({
@@ -787,6 +789,8 @@ async function main(): Promise<void> {
                         userId: event.userId ?? event.senderId,
                     },
                 }));
+                // 消息到达后即时唤醒主循环，消除轮询等待延迟
+                mainLoop?.wake();
             }
             log.info("即时 → Layer0", {
                 chatId,
@@ -957,8 +961,8 @@ async function main(): Promise<void> {
     if (reflectionInterval.unref) reflectionInterval.unref();
 
     // ─── MainAgentLoop 配置 ───
-    const mainLoop = new MainAgentLoop(accumulator, q5, subagentManager, {
-        pollInterval: appConfig.subagent?.pollInterval ?? 5000,
+    mainLoop = new MainAgentLoop(accumulator, q5, subagentManager, {
+        pollInterval: appConfig.subagent?.pollInterval ?? 2000,
     }, globalState, adapters);
 
 
